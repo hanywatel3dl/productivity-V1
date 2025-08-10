@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SidebarAccount } from './SidebarAccount';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, Clock, Book, CheckSquare, Timer, BarChart2,
@@ -19,7 +20,6 @@ const menuItems = [
   { icon: BarChart2, label: 'التحليلات', path: 'analytics' },
 ];
 
-// --== تم إرجاع الأنيميشن الزنبركي الأصلي الذي تفضله ==--
 const sidebarVariants = {
   expanded: {
     width: 260,
@@ -45,8 +45,6 @@ const navItemVariants = {
   collapsed: { y: 20, opacity: 0, transition: { duration: 0.2 } },
 };
 
-
-// تذكر: هذا المكون الآن يحتاج isCollapsed و setIsCollapsed من المكون الأب (مثل App.js)
 export const Sidebar = ({ isCollapsed, setIsCollapsed, activePath, onNavigate }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -55,7 +53,6 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, activePath, onNavigate })
       variants={sidebarVariants}
       animate={isCollapsed ? "collapsed" : "expanded"}
       initial="expanded"
-      // --== تعديل 1: تثبيت السايد بار في الشاشة ==--
       className="fixed top-0 right-0 h-screen z-50 bg-[#2D1B69]/50 backdrop-blur-xl p-4 flex flex-col gap-y-4"
     >
       <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
@@ -66,7 +63,7 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, activePath, onNavigate })
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.0000000000000000000000000000000000001, ease: "easeOut" }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               className="flex items-center gap-3 overflow-hidden"
             >
               <motion.img
@@ -111,12 +108,9 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, activePath, onNavigate })
             ) : (
               <motion.div
                 key="panel"
-                // --== تعديل 2: هذا هو الحل لمشكلة الدوران ==--
-                // الآن الأيقونة تظهر مباشرة بالدوران الصحيح دون أنيميشن دوران إضافي
                 initial={{ opacity: 0, scale: 0.5, rotate: isCollapsed ? 180 : 0 }}
                 animate={{ opacity: 1, scale: 1, rotate: isCollapsed ? 180 : 0 }}
                 exit={{ opacity: 0, scale: 0.5 }}
-                // --== تم إرجاع الأنيميشن الزنبركي الذي تفضله للدوران عند الضغط ==--
                 transition={{ type: "spring", stiffness: 200, damping: 20 }}
               >
                 <PanelLeft className="w-6 h-6" />
@@ -132,8 +126,7 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, activePath, onNavigate })
         transition={{ delay: 0.2, duration: 0.6, type: "spring" }}
         className="border-t border-white/10" 
       />
-
-      {/* إضافة overflow-y-auto للتعامل مع القوائم الطويلة في الشاشات الصغيرة */}
+      
       <motion.nav
         variants={navItemsContainerVariants}
         initial="collapsed"
@@ -168,6 +161,10 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, activePath, onNavigate })
           </motion.div>
         ))}
       </motion.nav>
+
+      {/* --== التعديل الأسطوري هنا: تمرير حالة الشريط الجانبي ==-- */}
+      <SidebarAccount isCollapsed={isCollapsed} />
+
     </motion.div>
   );
 };

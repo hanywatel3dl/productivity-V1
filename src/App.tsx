@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './components/Sidebar';
+import { AuthProvider } from './context/AuthProvider';
+import { SyncProvider } from './context/SyncProvider';
+import LoginPage from './pages/Login';
 import { Calendar } from './components/Calendar';
 import { PrayerTimesView } from './components/prayers/PrayerTimesView';
 import { QuranProgress } from './components/quran/QuranProgress';
@@ -14,7 +17,7 @@ import { HabitsView } from './components/habits/HabitsView';
 import { EnhancedRemindersView } from './components/reminders/EnhancedRemindersView';
 import { AudioPlayerToggle } from './components/pomodoro/AudioPlayerToggle';
 
-function App() {
+function AppShell() {
   const [activePath, setActivePath] = useState('recovery'); 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -67,4 +70,27 @@ function App() {
   );
 }
 
-export default App;
+function RouterGate({ children }: { children: React.ReactNode }) {
+  const [hash, setHash] = useState<string>(typeof window !== 'undefined' ? window.location.hash : '');
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHashChange);
+    // Ensure state is in sync on mount
+    setHash(window.location.hash);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+  if (hash === '#/login') return <LoginPage />;
+  return <>{children}</>;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <SyncProvider>
+        <RouterGate>
+          <AppShell />
+        </RouterGate>
+      </SyncProvider>
+    </AuthProvider>
+  );
+}

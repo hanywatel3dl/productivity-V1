@@ -114,3 +114,30 @@ CREATE INDEX IF NOT EXISTS habits_user_id_idx ON habits(user_id);
 CREATE INDEX IF NOT EXISTS habit_logs_user_id_idx ON habit_logs(user_id);
 CREATE INDEX IF NOT EXISTS habit_logs_habit_id_idx ON habit_logs(habit_id);
 CREATE INDEX IF NOT EXISTS habit_logs_date_idx ON habit_logs(date);
+
+-- Additional tables: profiles and user_data (for JSON sync)
+CREATE TABLE IF NOT EXISTS profiles (
+  user_id uuid PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+  full_name text,
+  avatar_url text,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage their own profile"
+  ON profiles FOR ALL TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS user_data (
+  user_id uuid PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+  data jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage their own user_data"
+  ON user_data FOR ALL TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
