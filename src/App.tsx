@@ -16,24 +16,58 @@ import { NotesView } from './components/notes/NotesView';
 import { HabitsView } from './components/habits/HabitsView';
 import { EnhancedRemindersView } from './components/reminders/EnhancedRemindersView';
 import { AudioPlayerToggle } from './components/pomodoro/AudioPlayerToggle';
+import { useMediaQuery } from './hooks/useMediaQuery';
+import { Menu } from 'lucide-react';
 
 function AppShell() {
-  const [activePath, setActivePath] = useState('recovery'); 
+  const [activePath, setActivePath] = useState('recovery');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+
+  const handleNavigate = (path: string) => {
+    setActivePath(path);
+    if (!isDesktop) {
+      setIsMobileNavOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isDesktop) {
+      setIsMobileNavOpen(false);
+    } else {
+      setIsCollapsed(true);
+    }
+  }, [isDesktop]);
 
   return (
     <div className="flex min-h-screen bg-[#1A0F3C]">
       <Sidebar 
-        isCollapsed={isCollapsed} 
+        isCollapsed={isDesktop ? isCollapsed : true}
         setIsCollapsed={setIsCollapsed} 
         activePath={activePath} 
-        onNavigate={setActivePath} 
+        onNavigate={handleNavigate}
+        isMobileNavOpen={isMobileNavOpen}
+        setIsMobileNavOpen={setIsMobileNavOpen}
+        isDesktop={isDesktop}
       />
       
       <main 
-        className="flex-1 p-8 overflow-auto transition-all duration-300 ease-in-out"
-        style={{ marginRight: isCollapsed ? '80px' : '260px' }}
+        className="flex-1 p-4 sm:p-8 overflow-y-auto transition-all duration-300 ease-in-out"
+        style={{
+          marginRight: isDesktop ? (isCollapsed ? '80px' : '260px') : '0'
+        }}
       >
+        {!isDesktop && (
+          <div className="fixed top-4 right-4 z-50">
+            <button
+              onClick={() => setIsMobileNavOpen(true)}
+              className="p-2 bg-[#2D1B69]/50 backdrop-blur-md rounded-md text-white"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           <motion.div
             key={activePath}
