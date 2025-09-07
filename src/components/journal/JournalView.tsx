@@ -19,7 +19,7 @@ export const JournalView = () => {
   const displayDate = format(selectedDate, 'EEEE dd MMMM yyyy', { locale: ar });
   
   // Get note for selected date
-  const todayNote = notes.find(note => note.title.includes(formattedDate));
+  const todayNote = notes.find(note => note.title.startsWith(formattedDate));
 
   // Generate week days
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
@@ -114,7 +114,7 @@ export const JournalView = () => {
       <div className="grid grid-cols-7 gap-2 mb-6">
         {weekDays.map((day) => {
           const isSelected = day.toDateString() === selectedDate.toDateString();
-          const hasNote = notes.some(note => note.title.includes(format(day, 'yyyy-MM-dd')));
+          const hasNote = notes.some(note => note.title.startsWith(format(day, 'yyyy-MM-dd')));
           const isFutureDate = isAfter(day, today);
           const isCurrentDay = isToday(day);
           
@@ -248,19 +248,16 @@ export const JournalView = () => {
           <h3 className="text-xl font-bold text-white mb-4">اليوميات السابقة</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {notes
-              .filter(note => note.title.includes('-')) 
+              // **التغيير هنا**: فلترة دقيقة لليوميات فقط
+              .filter(note => /^\d{4}-\d{2}-\d{2} - .*/.test(note.title))
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
               .slice(0, 6)
               .map((note) => {
-                const dateString = note.title.split(' - ')[0];
-                const parsedDate = new Date(dateString);
+                const noteDateStr = note.title.split(' - ')[0];
+                const noteDate = new Date(noteDateStr);
                 
-                // Check if the parsed date is valid before trying to format it
-                const isDateValid = isValid(parsedDate);
-
-                const displayNoteDate = isDateValid
-                  ? format(parsedDate, 'EEEE dd MMMM', { locale: ar })
-                  : note.title;
+                // بما أن الفلترة تضمن الصحة، يمكننا استخدام التاريخ مباشرة
+                const displayNoteDate = format(noteDate, 'EEEE dd MMMM', { locale: ar });
                 
                 return (
                   <motion.div
@@ -268,10 +265,10 @@ export const JournalView = () => {
                     whileHover={{ scale: 1.02 }}
                     className="bg-[#2D1B69]/30 backdrop-blur-lg rounded-lg p-4 cursor-pointer"
                     onClick={() => {
-                      // Only navigate if the date was valid
-                      if (isDateValid) {
-                        setSelectedDate(parsedDate);
-                        setWeekStart(startOfWeek(parsedDate, { weekStartsOn: 0 }));
+                      // التحقق من صحة التاريخ لا يزال جيدًا كإجراء وقائي
+                      if (isValid(noteDate)) {
+                        setSelectedDate(noteDate);
+                        setWeekStart(startOfWeek(noteDate, { weekStartsOn: 0 }));
                       }
                     }}
                   >
