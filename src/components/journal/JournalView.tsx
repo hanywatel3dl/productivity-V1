@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, addDays, subDays, startOfWeek, addWeeks, subWeeks, isAfter, isToday, isSameWeek } from 'date-fns';
+import { format, addDays, subDays, startOfWeek, addWeeks, subWeeks, isAfter, isToday, isSameWeek, isValid } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { useStore } from '../../store';
 import { ChevronRight, ChevronLeft, Plus, Calendar, Edit3, Save } from 'lucide-react';
@@ -27,18 +27,15 @@ export const JournalView = () => {
   const handlePrevDay = () => {
     const newDate = subDays(selectedDate, 1);
     setSelectedDate(newDate);
-    // إذا انتقل اليوم إلى أسبوع مختلف، قم بتحديث عرض الأسبوع
     if (!isSameWeek(newDate, selectedDate, { weekStartsOn: 0 })) {
       setWeekStart(startOfWeek(newDate, { weekStartsOn: 0 }));
     }
   };
   const handleNextDay = () => {
     const newDate = addDays(selectedDate, 1);
-    // منع التنقل إلى المستقبل
     if (isAfter(newDate, today)) return;
     
     setSelectedDate(newDate);
-    // إذا انتقل اليوم إلى أسبوع مختلف، قم بتحديث عرض الأسبوع
     if (!isSameWeek(newDate, selectedDate, { weekStartsOn: 0 })) {
       setWeekStart(startOfWeek(newDate, { weekStartsOn: 0 }));
     }
@@ -81,7 +78,7 @@ export const JournalView = () => {
     setEditingNote(null);
   };
 
-  const isNextWeekInFuture = weekDays.some(day => isToday(day));
+  const isNextWeekInFuture = isAfter(addWeeks(weekStart, 1), today);
 
   return (
     <div className="space-y-6">
@@ -251,13 +248,18 @@ export const JournalView = () => {
           <h3 className="text-xl font-bold text-white mb-4">اليوميات السابقة</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {notes
-              .filter(note => note.title.includes('-')) // Only show date-based journal entries
+              .filter(note => note.title.includes('-')) 
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
               .slice(0, 6)
               .map((note) => {
-                const noteDate = note.title.split(' - ')[0];
-                const displayNoteDate = note.title.includes('-') 
-                  ? format(new Date(noteDate), 'EEEE dd MMMM', { locale: ar })
+                const dateString = note.title.split(' - ')[0];
+                const parsedDate = new Date(dateString);
+                
+                // Check if the parsed date is valid before trying to format it
+                const isDateValid = isValid(parsedDate);
+
+                const displayNoteDate = isDateValid
+                  ? format(parsedDate, 'EEEE dd MMMM', { locale: ar })
                   : note.title;
                 
                 return (
@@ -266,10 +268,10 @@ export const JournalView = () => {
                     whileHover={{ scale: 1.02 }}
                     className="bg-[#2D1B69]/30 backdrop-blur-lg rounded-lg p-4 cursor-pointer"
                     onClick={() => {
-                      if (noteDate && noteDate.includes('-')) {
-                        const newSelectedDate = new Date(noteDate);
-                        setSelectedDate(newSelectedDate);
-                        setWeekStart(startOfWeek(newSelectedDate, { weekStartsOn: 0 }));
+                      // Only navigate if the date was valid
+                      if (isDateValid) {
+                        setSelectedDate(parsedDate);
+                        setWeekStart(startOfWeek(parsedDate, { weekStartsOn: 0 }));
                       }
                     }}
                   >
