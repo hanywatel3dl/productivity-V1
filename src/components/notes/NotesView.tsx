@@ -1,9 +1,20 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Search, Save, Trash2, PenLine } from 'lucide-react';
-import { useStore, Note } from '../../store'; // تأكد من استيراد Note
+import { useStore, Note } from '../../store';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
+
+// Helper function to extract plain text from a rich-text content object
+const extractTextFromContent = (content: any): string => {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  if (content.text && typeof content.text === 'string') return content.text;
+  if (Array.isArray(content.content)) {
+    return content.content.map(extractTextFromContent).join(' ');
+  }
+  return '';
+};
 
 const SavingSpinner = () => (
   <motion.div 
@@ -16,24 +27,19 @@ const SavingSpinner = () => (
 export const NotesView = () => {
   const { notes, addNote, updateNote, deleteNote, currentNote, setCurrentNote } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // 1. حالة جديدة لتتبع وضع الإنشاء بشكل صريح
   const [isCreating, setIsCreating] = useState(false);
-
   const [editorTitle, setEditorTitle] = useState('');
   const [editorContent, setEditorContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // 2. تحديث خوارزمية المزامنة
-  // هذا الـ hook يضبط حالة المحرر بناءً على الملاحظة المحددة أو وضع الإنشاء
   useEffect(() => {
     if (currentNote) {
       setEditorTitle(currentNote.title);
-      setEditorContent(currentNote.content);
-      setIsCreating(false); // إذا تم تحديد ملاحظة، فنحن لسنا في وضع الإنشاء
+      // FIX: Convert content object to plain text for the textarea
+      setEditorContent(extractTextFromContent(currentNote.content));
+      setIsCreating(false);
     } else {
-      // إما أننا في وضع الإنشاء أو لا يوجد شيء محدد
       setEditorTitle('');
       setEditorContent('');
     }
@@ -42,7 +48,8 @@ export const NotesView = () => {
 
   useEffect(() => {
     if (currentNote) {
-      const changed = editorTitle !== currentNote.title || editorContent !== currentNote.content;
+      const originalContentText = extractTextFromContent(currentNote.content);
+      const changed = editorTitle !== currentNote.title || editorContent !== originalContentText;
       setHasChanges(changed);
     } else {
       const changed = editorTitle.trim() !== '' || editorContent.trim() !== '';
@@ -52,20 +59,20 @@ export const NotesView = () => {
 
   const regularNotes = notes.filter(note => !note.title.includes('yyyy-MM-dd'));
   
+  // FIX: Use helper function for searching within the content object
   const filteredNotes = regularNotes.filter(note => 
     note.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    extractTextFromContent(note.content).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // 3. تحديث دالة إضافة الملاحظة
   const handleAddNote = () => {
-    setCurrentNote(null); // إلغاء تحديد أي ملاحظة حالية
-    setIsCreating(true);  // الدخول في وضع الإنشاء بشكل صريح
+    setCurrentNote(null);
+    setIsCreating(true);
   };
   
   const handleSelectNote = (note: Note) => {
     setCurrentNote(note);
-    setIsCreating(false); // الخروج من وضع الإنشاء عند تحديد ملاحظة
+    setIsCreating(false);
   };
 
   const handleSaveNote = () => {
@@ -73,23 +80,26 @@ export const NotesView = () => {
       alert("لا يمكن حفظ ملاحظة بدون عنوان.");
       return;
     }
-
     setIsSaving(true);
-
     setTimeout(() => {
+      // WARNING: This saves content as plain text. Rich-text formatting will be lost.
+      // If you need to preserve formatting, you must structure the content back into the JSON object.
+      // For now, this will make it work with a standard string.
+      const contentToSave = editorContent;
+
       if (currentNote) {
-        updateNote(currentNote.id, { title: editorTitle, content: editorContent });
+        updateNote(currentNote.id, { title: editorTitle, content: contentToSave });
       } else {
         const newNote = {
           id: crypto.randomUUID(),
           title: editorTitle,
-          content: editorContent,
+          content: contentToSave,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
         addNote(newNote);
         setCurrentNote(newNote); 
-        setIsCreating(false); // الخروج من وضع الإنشاء بعد الحفظ
+        setIsCreating(false);
       }
       setIsSaving(false);
       setHasChanges(false);
@@ -106,12 +116,11 @@ export const NotesView = () => {
     }
   };
 
-  // 4. تحديث منطق العرض (الشرط الأساسي)
-  // الآن الشرط واضح: اعرض المحرر إذا كانت هناك ملاحظة محددة أو إذا كنا في وضع الإنشاء
   const shouldShowEditor = currentNote !== null || isCreating;
 
   return (
     <div className="space-y-6">
+      {/* ... (rest of the intro JSX is fine) ... */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-amber-400">الملاحظات</h2>
         <motion.button
@@ -173,7 +182,8 @@ export const NotesView = () => {
                     }`}
                   >
                     <h4 className="text-lg font-semibold text-white mb-2 line-clamp-1">{note.title}</h4>
-                    <p className="text-purple-300 text-sm line-clamp-2 mb-2">{note.content}</p>
+                    {/* FIX: Use helper function to render the content preview */}
+                    <p className="text-purple-300 text-sm line-clamp-2 mb-2">{extractTextFromContent(note.content)}</p>
                     <div className="flex items-center justify-between text-xs text-purple-400">
                       <span>{format(new Date(note.updatedAt), 'dd MMMM yyyy', { locale: ar })}</span>
                       <motion.button
@@ -194,7 +204,7 @@ export const NotesView = () => {
             </div>
           )}
         </div>
-
+        {/* ... (rest of the editor JSX is fine) ... */}
         <div className="lg:col-span-2">
           <AnimatePresence mode="wait">
             {shouldShowEditor ? (
